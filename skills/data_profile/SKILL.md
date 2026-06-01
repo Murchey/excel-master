@@ -96,3 +96,49 @@ python skills/data_profile/scripts/data_profile.py "D:\Financial Project\2026_Ra
 3. CSV 文件会尝试 UTF-8 和 GBK 两种编码
 4. 所有数据按字符串读取，防止精度丢失
 5. 输出结果为 JSON 格式，便于 Agent 解析和处理
+
+## 常见问题与解决方案
+
+### 1. 列名不一致问题
+
+**问题描述**：不同来源的 Excel 文件可能有不同的列名结构，导致比对时出现 `KeyError` 错误。
+
+**典型场景**：
+- 文件 A 的列名：`['序号', '姓名', '金额']`
+- 文件 B 的列名：`['Unnamed: 0', 'Unnamed: 1', 'Unnamed: 2']`
+
+**原因分析**：
+- Excel 文件第一行可能是标题行（如"某某学校2025年秋季学期..."），而非表头
+- CSV 转换时，表头行被当作数据行，列名自动生成为 `Unnamed: X`
+
+**解决方案**：
+1. 检查 `sample_values` 字段：如果第一行数据是"序号"、"姓名"等表头内容，说明需要跳过第一行
+2. 使用 `header=None, skiprows=1` 参数读取文件
+3. 手动指定列名：`df.columns = ['序号', '姓名', '金额']`
+
+**示例代码**：
+```python
+# 检测是否需要跳过表头行
+df = pd.read_csv(file_path, nrows=3)
+if '序号' in df.iloc[0].values or '姓名' in df.iloc[0].values:
+    df = pd.read_csv(file_path, header=None, skiprows=1)
+    df.columns = ['序号', '姓名', '性别', '学籍号码', '身份证号', '金额', '班级', '备注']
+```
+
+### 2. 表头行位置不一致
+
+**问题描述**：不同文件的表头行位置可能不同（有的在第1行，有的在第3行）。
+
+**解决方案**：
+1. 使用 `data_profile` 探查每个文件的结构
+2. 比较 `sample_values` 字段，判断表头行位置
+3. 为每个文件单独指定 `skiprows` 参数
+
+### 3. 列数不一致
+
+**问题描述**：不同文件的列数可能不同，导致合并或比对时出错。
+
+**解决方案**：
+1. 检查 `total_cols` 字段
+2. 选择列数相同的文件进行比对
+3. 或者使用 `pd.merge()` 的 `how='outer'` 参数保留所有列

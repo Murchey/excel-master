@@ -124,3 +124,116 @@ print("比对完成，结果已保存")
 2. 输出目录需存在，否则 agent 会提前创建。
 3. 支持多表批量处理，但单次处理表格数量过多时，建议在 agent 中分批执行以避免内存占用过高。
 4. 对于列名不一致或缺失，建议先使用 `excel_scriptsGen` 做标准化处理。
+
+## 常见问题与解决方案
+
+### 1. 列名不一致导致 KeyError
+
+**问题描述**：比对两个目录中的文件时，出现 `KeyError: '姓名'` 错误。
+
+**原因分析**：
+- 左侧目录文件的列名是自动生成的（如 `Unnamed: 1`）
+- 右侧目录文件的列名是正确的（如 `姓名`）
+- 这通常是因为 Excel 文件第一行是标题行而非表头
+
+**解决方案**：
+1. 使用 `data_profile` 检查两个目录的列名结构
+2. 检查 `sample_values` 字段，判断是否需要跳过第一行
+3. 在比对脚本中分别处理两个目录的文件：
+
+```python
+def load_left_file(file_path):
+    # 左侧文件需要跳过标题行
+    df = pd.read_csv(file_path, dtype=str, header=None, skiprows=1)
+    df.columns = ['序号', '姓名', '性别', '学籍号码', '身份证号', '金额', '班级', '备注']
+    return df
+
+def load_right_file(file_path):
+    # 右侧文件列名正确
+    df = pd.read_csv(file_path, dtype=str)
+    return df
+```
+
+### 2. 输出目录不存在
+
+**问题描述**：比对脚本执行时出现 `OSError: Cannot save file into a non-existent directory` 错误。
+
+**解决方案**：
+1. 在执行比对脚本前，确保输出目录存在
+2. 在脚本中添加目录创建逻辑：
+
+```python
+import os
+os.makedirs(os.path.dirname(output_path), exist_ok=True)
+```
+
+3. 或者由 Agent 在创建工作区时确保目录结构完整
+
+### 3. 数据类型不一致
+
+**问题描述**：比对数值列时，一个是字符串类型，一个是数值类型，导致比较失败。
+
+**解决方案**：
+1. 在比对前统一数据类型：
+
+```python
+df['金额'] = pd.to_numeric(df['金额'], errors='coerce')
+```
+
+2. 使用 `errors='coerce'` 参数将无法转换的值设为 NaN
+
+### 4. 空值处理
+
+**问题描述**：比对结果中出现意外的空值或 NaN。
+
+**解决方案**：
+1. 在比对前清理空值：
+
+```python
+df = df.dropna(subset=['姓名'])  # 删除姓名为空的行
+df['姓名'] = df['姓名'].str.strip()  # 去除空格
+```
+
+2. 在比对结果中标记空值情况
+
+## 比对脚本模板
+
+```python
+import pandas as pd
+import os
+import json
+import sys
+
+def compare_files(left_path, right_path, primary_key, left_value_col, right_value_col):
+    # 读取文件（根据实际情况调整）
+    left_df = pd.read_csv(left_path, dtype=str, header=None, skiprows=1)
+    left_df.columns = ['序号', '姓名', '性别', '学籍号码', '身份证号', '金额', '班级', '备注']
+    
+    right_df = pd.read_csv(right_path, dtype=str)
+    
+    # 清理数据
+    left_df[primary_key] = left_df[primary_key].str.strip()
+    right_df[primary_key] = right_df[primary_key].str.strip()
+    left_df = left_df.dropna(subset=[primary_key])
+    right_df = right_df.dropna(subset=[primary_key])
+    
+    # 转换数值类型
+    left_df[left_value_col] = pd.to_numeric(left_df[left_value_col], errors='coerce')
+    right_df[right_value_col] = pd.to_numeric(right_df[right_value_col], errors='coerce')
+    
+    # 合并比对
+    merged = pd.merge(
+        left_df[[primary_key, left_value_col]].rename(columns={left_value_col: '标准金额'}),
+        right_df[[primary_key, right_value_col]].rename(columns={right_value_col: '待比对金额'}),
+        on=primary_key,
+        how='outer'
+    )
+    
+    # 计算差异
+    merged['差异'] = merged['待比对金额'] - merged['标准金额']
+    merged['比对结果'] = merged['差异'].apply(
+        lambda x: '一致' if x == 0 else ('金额不一致' if pd.notna(x) else '缺失')
+    )
+    
+    return merged
+```
