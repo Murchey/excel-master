@@ -21,11 +21,16 @@ description: "Excel 文件的读取、保存和工作区适配操作"
 * 将指定路径的 Excel 文件读取为 CSV 或 Pandas DataFrame
 * 支持多 Sheet 或指定 Sheet 读取
 * 保存中间 CSV 文件到工作区或临时目录
+* **支持递归扫描子目录**：当源路径为目录时，自动递归扫描所有子目录中的 Excel 文件，并在目标目录中保留子目录结构
 
 **调用示例（PowerShell）**：
 
 ```powershell
-python read_excel.py "D:\Financial Project\2026_Raw_Data.xlsx" "D:\workspace\user_project_name\temp"
+# 读取单个文件
+python skills/excel_io/scripts/excel_read.py "D:\Financial Project\2026_Raw_Data.xlsx" "D:\workspace\user_project_name\temp"
+
+# 读取目录中所有文件（递归扫描子目录，保留目录结构）
+python skills/excel_io/scripts/excel_read.py "D:\Financial Project\测试数据" "D:\workspace\user_project_name\temp"
 ```
 
 ## 2. 保存 Excel 文件

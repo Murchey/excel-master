@@ -9,100 +9,99 @@ import pandas as pd
 
 app = Flask(__name__, template_folder='../templates')
 
+SUPPORTED_EXTENSIONS = {'.xlsx', '.xls', '.csv'}
+
 data_store = {
     'mode': None,
-    'files': [],
-    'dataframes': [],
-    'result': None
+    'left_dir': None,
+    'right_dir': None,
+    'left_files': {},
+    'right_files': {},
+    'paired_files': [],
+    'current_pair': None,
+    'output_dir': None,
+    'compare_config': None
 }
 
 
-def load_excel_file(file_path):
+def scan_files_recursive(path_str):
+    path = Path(path_str)
+    if path.is_file():
+        return [str(path)]
+    if not path.is_dir():
+        return []
+    files = []
+    for f in path.rglob('*'):
+        if f.is_file() and f.suffix.lower() in SUPPORTED_EXTENSIONS:
+            files.append(str(f))
+    files.sort()
+    return files
+
+
+def detect_header_row(file_path):
+    try:
+        df_raw = pd.read_excel(file_path, header=None, nrows=10, dtype=str)
+        for i in range(min(10, len(df_raw))):
+            row = df_raw.iloc[i]
+            non_empty = row.dropna()
+            non_empty = non_empty[non_empty.str.strip() != '']
+            if len(non_empty) >= 3:
+                unnamed_count = sum(1 for v in non_empty if str(v).startswith('Unnamed'))
+                if unnamed_count < len(non_empty) * 0.5:
+                    return i
+        return 0
+    except:
+        return 0
+
+
+def load_excel_file(file_path, max_rows=None):
     path = Path(file_path)
     if not path.exists():
         return None, f"文件不存在: {file_path}"
-    
     try:
         if path.suffix.lower() == '.csv':
             try:
-                df = pd.read_csv(file_path, encoding='utf-8-sig')
+                df = pd.read_csv(file_path, encoding='utf-8-sig', nrows=max_rows, dtype=str)
             except UnicodeDecodeError:
-                df = pd.read_csv(file_path, encoding='gbk')
+                df = pd.read_csv(file_path, encoding='gbk', nrows=max_rows, dtype=str)
         else:
-            df = pd.read_excel(file_path)
+            header_row = detect_header_row(file_path)
+            df = pd.read_excel(file_path, header=header_row, nrows=max_rows, dtype=str)
+        df = df.fillna('')
         return df, None
     except Exception as e:
         return None, f"读取文件失败: {str(e)}"
 
 
-def compare_dataframes(df1, df2, compare_columns, match_mode='exact'):
-    result_rows = []
-    
-    if not compare_columns:
-        compare_columns = list(set(df1.columns) & set(df2.columns))
-    
-    for idx1, row1 in df1.iterrows():
-        for idx2, row2 in df2.iterrows():
-            is_match = True
-            diff_details = []
-            
-            for col in compare_columns:
-                if col not in df1.columns or col not in df2.columns:
-                    continue
-                
-                val1 = str(row1[col]) if pd.notna(row1[col]) else ''
-                val2 = str(row2[col]) if pd.notna(row2[col]) else ''
-                
-                if match_mode == 'exact':
-                    if val1 != val2:
-                        is_match = False
-                        diff_details.append({
-                            'column': col,
-                            'file1_value': val1,
-                            'file2_value': val2
-                        })
-                elif match_mode == 'contains':
-                    if val1 not in val2 and val2 not in val1:
-                        is_match = False
-                        diff_details.append({
-                            'column': col,
-                            'file1_value': val1,
-                            'file2_value': val2
-                        })
-            
-            if diff_details:
-                result_rows.append({
-                    'file1_row': idx1,
-                    'file2_row': idx2,
-                    'is_match': is_match,
-                    'diffs': diff_details
-                })
-    
-    return result_rows
+def load_directory_files(dir_path, max_rows=None):
+    files = scan_files_recursive(dir_path)
+    result = {}
+    for fp in files:
+        p = Path(fp)
+        df, error = load_excel_file(fp, max_rows)
+        if df is not None:
+            result[p.name] = {
+                'path': fp,
+                'name': p.name,
+                'df': df,
+                'columns': df.columns.tolist(),
+                'rows': len(df)
+            }
+    return result
 
 
-def merge_dataframes(dfs, merge_type='vertical', key_columns=None, selected_columns=None):
-    if not dfs:
-        return None, "没有数据可合并"
-    
-    try:
-        if selected_columns:
-            dfs = [df[selected_columns] for df in dfs if all(col in df.columns for col in selected_columns)]
-        
-        if merge_type == 'vertical':
-            result = pd.concat(dfs, ignore_index=True)
-        elif merge_type == 'horizontal':
-            result = pd.concat(dfs, axis=1)
-        elif merge_type == 'key' and key_columns:
-            result = dfs[0]
-            for df in dfs[1:]:
-                result = pd.merge(result, df, on=key_columns, how='outer')
-        else:
-            result = pd.concat(dfs, ignore_index=True)
-        
-        return result, None
-    except Exception as e:
-        return None, f"合并失败: {str(e)}"
+def clean_records(df, max_rows=200):
+    records = df.head(max_rows).to_dict('records')
+    clean_records = []
+    for row in records:
+        clean_row = {}
+        for k, v in row.items():
+            if pd.isna(v) or v is None:
+                clean_row[k] = ''
+            else:
+                clean_row[k] = str(v)
+        clean_records.append(clean_row)
+    return clean_records
 
 
 @app.route('/')
@@ -110,108 +109,112 @@ def index():
     return render_template('index.html', mode=data_store['mode'])
 
 
-@app.route('/api/data')
-def get_data():
+@app.route('/api/init')
+def init_data():
+    paired_files = data_store['paired_files']
+    first_pair = paired_files[0] if paired_files else None
+    
     result = {
         'mode': data_store['mode'],
-        'files': []
+        'left_dir': data_store['left_dir'],
+        'right_dir': data_store['right_dir'],
+        'paired_files': paired_files,
+        'current_pair': first_pair,
+        'unpaired_left': [f for f in data_store['left_files'].keys() if f not in paired_files],
+        'unpaired_right': [f for f in data_store['right_files'].keys() if f not in paired_files]
     }
     
-    for i, (fpath, df) in enumerate(zip(data_store['files'], data_store['dataframes'])):
-        result['files'].append({
-            'index': i,
-            'name': Path(fpath).name,
-            'columns': df.columns.tolist(),
-            'rows': len(df),
-            'data': df.head(100).to_dict('records')
-        })
+    if first_pair:
+        left_info = data_store['left_files'].get(first_pair)
+        right_info = data_store['right_files'].get(first_pair)
+        if left_info and right_info:
+            result['current_columns'] = list(set(left_info['columns']) & set(right_info['columns']))
     
     return jsonify(result)
 
 
-@app.route('/api/compare', methods=['POST'])
-def compare():
-    data = request.json
-    columns = data.get('columns', [])
-    match_mode = data.get('match_mode', 'exact')
+@app.route('/api/pair')
+def get_pair():
+    filename = request.args.get('name', '')
+    if not filename:
+        return jsonify({'status': 'error', 'message': '未指定文件名'})
     
-    if len(data_store['dataframes']) < 2:
-        return jsonify({'status': 'error', 'message': '需要两个文件进行比对'})
+    left_info = data_store['left_files'].get(filename)
+    right_info = data_store['right_files'].get(filename)
     
-    df1 = data_store['dataframes'][0]
-    df2 = data_store['dataframes'][1]
+    if not left_info or not right_info:
+        return jsonify({'status': 'error', 'message': f'文件对不存在: {filename}'})
     
-    results = compare_dataframes(df1, df2, columns, match_mode)
-    
-    diff_count = sum(1 for r in results if not r['is_match'])
+    data_store['current_pair'] = filename
     
     return jsonify({
         'status': 'success',
-        'total_compared': len(results),
-        'diff_count': diff_count,
-        'results': results[:100]
+        'name': filename,
+        'left': {
+            'name': filename,
+            'path': left_info['path'],
+            'columns': left_info['columns'],
+            'rows': left_info['rows'],
+            'data': clean_records(left_info['df'])
+        },
+        'right': {
+            'name': filename,
+            'path': right_info['path'],
+            'columns': right_info['columns'],
+            'rows': right_info['rows'],
+            'data': clean_records(right_info['df'])
+        },
+        'common_columns': list(set(left_info['columns']) & set(right_info['columns']))
     })
 
 
-@app.route('/api/merge', methods=['POST'])
-def merge():
+@app.route('/api/confirm', methods=['POST'])
+def confirm():
     data = request.json
-    merge_type = data.get('merge_type', 'vertical')
-    key_columns = data.get('key_columns', [])
-    selected_columns = data.get('selected_columns', [])
+    primary_key = data.get('primary_key', '')
+    secondary_keys = data.get('secondary_keys', [])
+    left_value_columns = data.get('left_value_columns', [])
+    right_value_columns = data.get('right_value_columns', [])
+    notes = data.get('notes', '')
     
-    result_df, error = merge_dataframes(
-        data_store['dataframes'],
-        merge_type,
-        key_columns if key_columns else None,
-        selected_columns if selected_columns else None
-    )
+    if not primary_key:
+        return jsonify({'status': 'error', 'message': '请选择主键列'})
     
-    if error:
-        return jsonify({'status': 'error', 'message': error})
+    if not left_value_columns and not right_value_columns:
+        return jsonify({'status': 'error', 'message': '请至少选择一个值列'})
     
-    data_store['result'] = result_df
+    output_dir = data_store.get('output_dir')
+    if not output_dir:
+        return jsonify({'status': 'error', 'message': '未设置输出目录'})
     
-    return jsonify({
-        'status': 'success',
-        'rows': len(result_df),
-        'columns': result_df.columns.tolist(),
-        'preview': result_df.head(50).to_dict('records')
-    })
-
-
-@app.route('/api/export', methods=['POST'])
-def export():
-    data = request.json
-    output_path = data.get('output_path', '')
-    operation = data.get('operation', '')
+    config = {
+        'left_dir': data_store['left_dir'],
+        'right_dir': data_store['right_dir'],
+        'paired_files': data_store['paired_files'],
+        'primary_key': primary_key,
+        'secondary_keys': secondary_keys,
+        'left_value_columns': left_value_columns,
+        'right_value_columns': right_value_columns,
+        'notes': notes
+    }
     
-    if not output_path:
-        return jsonify({'status': 'error', 'message': '未指定输出路径'})
+    output_path = Path(output_dir) / 'compare_config.json'
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     
     try:
-        output = Path(output_path)
-        output.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(config, f, ensure_ascii=False, indent=2)
         
-        if operation == 'compare':
-            df1 = data_store['dataframes'][0]
-            df2 = data_store['dataframes'][1]
-            
-            with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
-                df1.to_excel(writer, sheet_name='文件1', index=False)
-                df2.to_excel(writer, sheet_name='文件2', index=False)
-        elif operation == 'merge' and data_store['result'] is not None:
-            data_store['result'].to_excel(output_path, index=False)
-        else:
-            return jsonify({'status': 'error', 'message': '没有可导出的数据'})
+        data_store['compare_config'] = config
         
         return jsonify({
             'status': 'success',
-            'output_file': str(output),
-            'message': f'结果已保存到: {output}'
+            'output_file': str(output_path),
+            'paired_count': len(data_store['paired_files']),
+            'message': f'比对规则已保存，将对 {len(data_store["paired_files"])} 对同名文件执行比对'
         })
     except Exception as e:
-        return jsonify({'status': 'error', 'message': f'导出失败: {str(e)}'})
+        return jsonify({'status': 'error', 'message': f'保存配置失败: {str(e)}'})
 
 
 @app.route('/api/shutdown', methods=['POST'])
@@ -232,49 +235,82 @@ def open_browser(port):
 def main():
     parser = argparse.ArgumentParser(description='Excel 文件可视化预览与操作')
     parser.add_argument('mode', choices=['compare', 'merge'], help='操作类型：compare（比对）或 merge（合并）')
-    parser.add_argument('files', nargs='+', help='Excel 文件路径')
+    parser.add_argument('dirs', nargs='+', help='包含 Excel 文件的目录路径')
     parser.add_argument('--port', type=int, default=5000, help='Web 服务端口号')
+    parser.add_argument('--max-rows', type=int, default=None, help='最大加载行数')
     
     args = parser.parse_args()
     
-    if args.mode == 'compare' and len(args.files) < 2:
+    if args.mode == 'compare' and len(args.dirs) < 2:
         print(json.dumps({
             'status': 'error',
-            'message': '比对模式需要至少两个文件'
+            'message': '比对模式需要两个目录路径'
         }, ensure_ascii=False))
         sys.exit(1)
     
+    left_dir = args.dirs[0]
+    right_dir = args.dirs[1] if len(args.dirs) > 1 else args.dirs[0]
+    
+    left_files = load_directory_files(left_dir, args.max_rows)
+    right_files = load_directory_files(right_dir, args.max_rows)
+    
+    if not left_files:
+        print(json.dumps({
+            'status': 'error',
+            'message': f'左侧目录未找到 Excel 文件: {left_dir}'
+        }, ensure_ascii=False))
+        sys.exit(1)
+    
+    if not right_files:
+        print(json.dumps({
+            'status': 'error',
+            'message': f'右侧目录未找到 Excel 文件: {right_dir}'
+        }, ensure_ascii=False))
+        sys.exit(1)
+    
+    left_names = set(left_files.keys())
+    right_names = set(right_files.keys())
+    paired = sorted(list(left_names & right_names))
+    
+    if not paired:
+        print(json.dumps({
+            'status': 'error',
+            'message': '未找到同名文件，请确保两个目录中有相同名称的 Excel 文件',
+            'left_files': list(left_files.keys()),
+            'right_files': list(right_files.keys())
+        }, ensure_ascii=False))
+        sys.exit(1)
+    
+    output_dir = Path(left_dir).parent / 'excel_output'
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
     data_store['mode'] = args.mode
-    data_store['files'] = args.files
-    data_store['dataframes'] = []
+    data_store['left_dir'] = left_dir
+    data_store['right_dir'] = right_dir
+    data_store['left_files'] = left_files
+    data_store['right_files'] = right_files
+    data_store['paired_files'] = paired
+    data_store['output_dir'] = str(output_dir)
+    data_store['current_pair'] = paired[0]
     
-    for fpath in args.files:
-        df, error = load_excel_file(fpath)
-        if error:
-            print(json.dumps({
-                'status': 'error',
-                'message': error
-            }, ensure_ascii=False))
-            sys.exit(1)
-        data_store['dataframes'].append(df)
-    
-    output_dir = None
-    if args.files:
-        first_file = Path(args.files[0])
-        output_dir = first_file.parent.parent / 'excel_output'
-        output_dir.mkdir(parents=True, exist_ok=True)
+    unpaired_left = list(left_names - right_names)
+    unpaired_right = list(right_names - left_names)
     
     print(json.dumps({
         'status': 'success',
         'mode': args.mode,
         'url': f'http://localhost:{args.port}',
-        'files': args.files,
-        'output_dir': str(output_dir) if output_dir else None,
-        'message': f'预览服务已启动，请在浏览器中打开 http://localhost:{args.port}'
+        'left_dir': left_dir,
+        'right_dir': right_dir,
+        'paired_files': paired,
+        'paired_count': len(paired),
+        'unpaired_left': unpaired_left,
+        'unpaired_right': unpaired_right,
+        'output_dir': str(output_dir),
+        'message': f'找到 {len(paired)} 对同名文件，预览服务已启动，请在浏览器中打开 http://localhost:{args.port}'
     }, ensure_ascii=False))
     
     threading.Thread(target=open_browser, args=(args.port,), daemon=True).start()
-    
     app.run(host='localhost', port=args.port, debug=False)
 
 

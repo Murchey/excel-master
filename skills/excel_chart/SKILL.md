@@ -19,7 +19,7 @@ description: "基于数据探查结果生成数据图表，支持柱状图、折
 ## 工具调用方式
 
 - 脚本路径：`skills/excel_chart/scripts/generate_chart.py`
-- 调用命令：`python skills/excel_chart/scripts/generate_chart.py <数据文件路径> [图表类型] [数据范围] [输出目录]`
+- 调用命令：`python skills/excel_chart/scripts/generate_chart.py <数据文件路径> [图表类型] [数据范围] [输出目录] [--max-rows 行数]`
 
 ## 参数说明
 
@@ -29,6 +29,7 @@ description: "基于数据探查结果生成数据图表，支持柱状图、折
 | `图表类型` | 否 | 图表类型，可选值：`bar`（柱状图）、`line`（折线图）、`pie`（饼图）、`scatter`（散点图）。默认为 `bar` |
 | `数据范围` | 否 | JSON 格式的数据范围描述，包含列名、行范围、筛选条件等 |
 | `输出目录` | 否 | 图表保存目录。如不指定，默认保存到工作区的 `excel_output` 目录 |
+| `--max-rows` | 否 | 最大加载行数，用于大文件优化 |
 
 ### 数据范围参数格式
 

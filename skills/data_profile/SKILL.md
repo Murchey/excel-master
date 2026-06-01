@@ -18,7 +18,9 @@ description: "提取表格数据特征并输出 JSON 格式的探查报告。在
 ## 工具调用方式
 
 - 脚本路径：`skills/data_profile/scripts/data_profile.py`
-- 调用命令：`python skills/data_profile/scripts/data_profile.py <文件绝对或相对路径>`
+- 调用命令：`python skills/data_profile/scripts/data_profile.py <文件或目录路径>`
+
+当传入目录路径时，脚本会自动递归扫描所有子目录中的 `.xlsx`、`.xls` 和 `.csv` 文件，输出每个文件的探查报告，并按子目录分组。
 
 ## 脚本输出格式解析
 

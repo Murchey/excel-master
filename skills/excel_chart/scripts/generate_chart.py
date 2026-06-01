@@ -10,7 +10,7 @@ from pathlib import Path
 matplotlib.rcParams['font.sans-serif'] = ['SimHei', 'DejaVu Sans']
 matplotlib.rcParams['axes.unicode_minus'] = False
 
-def generate_chart(data_path, chart_type='bar', data_range=None, output_dir=None):
+def generate_chart(data_path, chart_type='bar', data_range=None, output_dir=None, max_rows=None):
     """
     基于数据文件生成图表
     
@@ -19,6 +19,7 @@ def generate_chart(data_path, chart_type='bar', data_range=None, output_dir=None
         chart_type: 图表类型（bar, line, pie, scatter）
         data_range: 数据范围，JSON 格式字符串，包含 columns, rows, filter 等
         output_dir: 输出目录（可选）
+        max_rows: 最大加载行数（可选）
     
     Returns:
         JSON 格式的执行结果
@@ -57,11 +58,11 @@ def generate_chart(data_path, chart_type='bar', data_range=None, output_dir=None
         # 读取数据
         if source.suffix.lower() == '.csv':
             try:
-                df = pd.read_csv(data_path, encoding='utf-8-sig')
+                df = pd.read_csv(data_path, encoding='utf-8-sig', nrows=max_rows)
             except UnicodeDecodeError:
-                df = pd.read_csv(data_path, encoding='gbk')
+                df = pd.read_csv(data_path, encoding='gbk', nrows=max_rows)
         else:
-            df = pd.read_excel(data_path)
+            df = pd.read_excel(data_path, nrows=max_rows)
         
         # 应用数据范围筛选
         if data_range:
@@ -271,8 +272,9 @@ if __name__ == "__main__":
     parser.add_argument("data_range", nargs='?', default=None,
                         help="数据范围，JSON 格式字符串（可选）")
     parser.add_argument("output_dir", nargs='?', help="输出目录（可选）")
+    parser.add_argument("--max-rows", type=int, default=None, help="最大加载行数（可选）")
     
     args = parser.parse_args()
     
     # 直接 print 结果，Trae 会捕获 stdout 标准输出
-    print(generate_chart(args.data_path, args.chart_type, args.data_range, args.output_dir))
+    print(generate_chart(args.data_path, args.chart_type, args.data_range, args.output_dir, args.max_rows))
