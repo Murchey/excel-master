@@ -1,292 +1,294 @@
 # EXCEL-MASTER MAIN AGENT
 
-## 核心原则
+<p align="center">
+  <a href="./AGENT.md">English</a> | <a href="./AGENT_CN.md">中文</a>
+</p>
 
-**按需读取 Skill**：Agent 在执行任务时，**不要一次性读取所有 Skill 文档**，而是根据当前工作流步骤，**仅在需要时读取对应的 Skill**。这样可以：
-- 减少 Token 消耗
-- 提高响应速度
-- 避免信息过载
+## Core Principle
 
-**读取时机**：当工作流执行到某个步骤需要调用特定 Skill 时，才读取该 Skill 的文档和脚本。
+**Read Skills on Demand**: When executing tasks, the Agent should **NOT read all Skill documents at once**, but instead **read only the corresponding Skill when needed** based on the current workflow step. This can:
+- Reduce Token consumption
+- Improve response speed
+- Avoid information overload
 
----
-
-## 技能列表（快速参考）
-
-> **注意**：以下仅为快速参考，详细使用说明请在需要时读取对应 Skill 的 SKILL.md 文件。
-
-| Skill | 用途 | 触发时机 |
-|-------|------|----------|
-| `mkdir_workspace` | 创建工作区及标准子目录 | 任何任务开始前（必须） |
-| `excel_io` | Excel 文件的读取、保存和工作区适配 | 需要读取或保存 Excel 文件时 |
-| `excel_scriptsGen` | 高度定制化 Excel 文件的分析和处理脚本生成 | 定制化需求中，用户确认需求后 |
-| `excel_compare` | 大量 Excel 表格的批量处理与简单比对 | 通用化需求中，用户确认比对规则后 |
-| `same_name_convertor` | 同名文件转换，解析比对文件时的两组文件名 | 比对任务中，两个目录文件名不一致时 |
-| `data_profile` | 数据探查技能，提取表格数据特征 | 需要了解表格结构和数据特征时 |
-| `excel_compat` | Excel 兼容性技能，将旧版 .xls 文件转换为 .xlsx | 遇到 .xls 格式文件时 |
-| `excel_chart` | 数据图表生成技能，基于数据探查结果生成可视化图表 | 用户需要可视化展示时 |
-| `excel_preview` | 可视化预览操作技能，提供网页界面 | 需要用户确认需求或查看结果时 |
+**Reading Timing**: Read a Skill's document and script only when the workflow reaches a step that requires calling that specific Skill.
 
 ---
 
-## 工作区与文件管理
+## Skill List (Quick Reference)
 
-* **工作区路径**：`./workspace/{user_project_name}`
-* **临时文件目录**：`./workspace/{user_project_name}/temp`（CSV 或中间文件）
-* **生成脚本目录**：`./workspace/{user_project_name}/generated_scripts`
-* **输出文件目录**：`./workspace/{user_project_name}/excel_output`（默认，如果用户未指定保存位置）
+> **Note**: The following is a quick reference only. For detailed usage instructions, please read the corresponding Skill's SKILL.md file when needed.
 
-> `{user_project_name}` 由 AI Agent 根据用户项目名自动替换
+| Skill | Purpose | Trigger Timing |
+|-------|---------|----------------|
+| `mkdir_workspace` | Create workspace and standard subdirectories | Before any task (Required) |
+| `excel_io` | Excel file read, save, and workspace adaptation | When needing to read or save Excel files |
+| `excel_scriptsGen` | Highly customized Excel file analysis and processing script generation | In customized requirements, after user confirms requirements |
+| `excel_compare` | Batch processing and simple comparison of large numbers of Excel tables | In general requirements, after user confirms comparison rules |
+| `same_name_convertor` | Same-name file conversion, parse two sets of filenames when comparing files | In comparison tasks, when file names in two directories are inconsistent |
+| `data_profile` | Data profiling skill, extract table data characteristics | When needing to understand table structure and data characteristics |
+| `excel_compat` | Excel compatibility skill, convert legacy .xls files to .xlsx | When encountering .xls format files |
+| `excel_chart` | Data chart generation skill, generate visual charts based on data profiling results | When user needs visual display |
+| `excel_preview` | Visual preview operation skill, provide web interface | When needing user to confirm requirements or view results |
 
 ---
 
-## 工作流概述
+## Workspace and File Management
 
-Agent 根据用户需求分为两类：**定制化需求** 和 **通用化需求**。
+* **Workspace Path**: `./workspace/{user_project_name}`
+* **Temporary File Directory**: `./workspace/{user_project_name}/temp` (CSV or intermediate files)
+* **Generated Script Directory**: `./workspace/{user_project_name}/generated_scripts`
+* **Output File Directory**: `./workspace/{user_project_name}/excel_output` (default, if user doesn't specify save location)
+
+> `{user_project_name}` is automatically replaced by AI Agent based on user project name
 
 ---
 
-### 0. 移动用户文件到工作区
+## Workflow Overview
 
-**适用场景**：用户在外部文件夹提供 Excel 文件或 CSV 文件
+Agent divides user requirements into two types: **Customized Requirements** and **General Requirements**.
 
-**需要读取的 Skill**：无（系统命令）
+---
 
-**步骤**：
+### 0. Move User Files to Workspace
 
-1. **获取用户输入文件路径**
+**Applicable Scenario**: User provides Excel files or CSV files in external folders
 
-   * 用户指定外部文件夹路径及文件名
+**Skills to Read**: None (system commands)
 
-2. **移动文件到工作区 temp 目录**
+**Steps**:
 
-   * 调用系统或 Python 命令将文件移动到：
+1. **Get User Input File Path**
 
+   * User specifies external folder path and file names
+
+2. **Move Files to Workspace temp Directory**
+
+   * Call system or Python commands to move files to:
      ```
      ./workspace/{user_project_name}/temp/
      ```
-   * 如果目标文件已存在，可选择覆盖或重命名
-   * 移动完成后，Agent 统一在工作区操作文件，保证后续流程一致
+   * If target file already exists, can choose to overwrite or rename
+   * After moving, Agent operates files uniformly in workspace
 
-3. **检查文件格式并转换（如需要）**
+3. **Check File Format and Convert (if needed)**
 
-   * 检查文件扩展名，如果是 `.xls` 格式：
-     * **读取 `excel_compat` Skill**：了解转换脚本的使用方法
-     * 调用 `excel_compat` Skill 将 `.xls` 转换为 `.xlsx`
-     * 转换后的 `.xlsx` 文件保存到同目录
-     * 后续处理使用转换后的 `.xlsx` 文件
-   * 如果是 `.xlsx` 或 `.csv` 格式，直接进行后续处理
-
----
-
-### 1. 定制化需求（高度个性化分析、精细处理）
-
-**适用场景**：五个以内表格的精细分析、文本处理、复杂整合等
-
-**步骤**：
-
-1. **获取用户输入**
-
-   * 分析用户意图和目标表格类型
-
-2. **创建工作区**
-
-   * **读取 `mkdir_workspace` Skill**：了解工作区创建脚本的使用方法
-   * 调用 `mkdir_workspace` Skill
-
-3. **读取表格**
-
-   * **读取 `excel_io` Skill**：了解 Excel 文件读取方法
-   * 调用 `excel_io.read()` 将 Excel 文件从 temp 目录读取为 CSV 或 DataFrame
-
-4. **数据探查**
-
-   * **读取 `data_profile` Skill**：了解数据探查脚本的使用方法和输出格式
-   * 调用 `data_profile` Skill，提取表格数据特征
-   * 获取列类型、空值数量、唯一值数量和样例数据
-   * 根据探查结果调整后续处理逻辑
-
-5. **打开 WEB 页面确认需求（必须）**
-
-   * **读取 `excel_preview` Skill**：了解预览服务的启动方法和操作模式
-   * 调用 `excel_preview` Skill 启动 Web 服务，**必须使用 `confirm` 操作模式**
-   * **目的**：让用户在网页界面可视化地确认处理需求，而非让 Agent 猜测
-   * 用户在网页界面完成以下操作：
-     - 查看数据预览和结构信息
-     - 选择需要处理的列
-     - 指定处理方式和规则
-     - 填写特殊要求和备注
-   * Agent 获取用户确认的需求后，继续后续步骤
-   * **此步骤在生成脚本之前执行**，确保生成的脚本完全符合用户需求
-
-6. **生成定制化脚本**
-
-   * **读取 `excel_scriptsGen` Skill**：了解脚本生成方法和参数说明
-   * 调用 `excel_scriptsGen` Skill，**根据用户在 WEB 页面确认的需求**生成分析或处理脚本
-   * 根据数据探查结果加入防呆逻辑（如处理空值）
-   * 确保脚本完全符合用户在网页界面指定的处理规则
-
-7. **执行分析/处理**
-
-   * 使用生成的脚本对 CSV/Excel 数据进行处理
-
-8. **保存处理结果**
-
-   * **读取 `excel_io` Skill**：了解 Excel 文件保存方法
-   * 调用 `excel_io.write()` 保存 Excel 文件
-   * 询问用户是否指定保存路径：
-
-     * **用户指定路径**：保存到指定目录
-     * **未指定路径**：保存到 `./excel_output`，并告知用户
-
-9. **输出结果 WEB 页面（按需）**
-
-   * **根据需求决定是否打开结果预览页面**：
-     - 如果用户需要查看处理结果：
-       * **读取 `excel_preview` Skill**：了解结果预览服务的启动方法
-       * 调用 `excel_preview` Skill 启动结果预览服务
-     - 如果是简单的批量处理且用户不需要预览：直接告知结果文件路径即可
-   * 结果预览页面功能：
-     - 展示处理前后的数据对比
-     - 高亮显示修改的部分
-     - 提供导出功能
-
-10. **生成数据图表（如需要）**
-
-    * 如果用户需要可视化展示：
-      * **读取 `excel_chart` Skill**：了解图表生成脚本的使用方法
-      * **必须询问用户**：
-        - 需要生成什么类型的图表（柱状图、折线图、饼图、散点图）
-        - 需要展示的数据范围（哪些列、哪些行、筛选条件）
-      * 根据用户选择生成图表
-      * 将图表保存到工作区 `excel_output` 目录
-      * 向用户展示图表并询问反馈
+   * Check file extension, if `.xls` format:
+     * **Read `excel_compat` Skill**: Understand conversion script usage
+     * Call `excel_compat` Skill to convert `.xls` to `.xlsx`
+     * Converted `.xlsx` file saved to same directory
+     * Subsequent processing uses converted `.xlsx` file
+   * If `.xlsx` or `.csv` format, proceed directly
 
 ---
 
-### 2. 通用化需求（大量表格批量处理、简单比对）
+### 1. Customized Requirements (Highly Personalized Analysis, Fine Processing)
 
-**适用场景**：多班级、多教师表格整合，快速比对或数据处理
+**Applicable Scenario**: Fine analysis of five or fewer tables, text processing, complex integration, etc.
 
-**步骤**：
+**Steps**:
 
-1. **获取用户输入**
+1. **Get User Input**
 
-   * 分析用户意图和批量操作需求
-   * **重要**：比对模式要求两个目录中存在**同名文件**（或语义相同的文件）
-   * Agent 应告知用户确保待比对的文件在两个目录中具有相同的文件名
-   * 如果文件名不同但语义相同，需要调用 `same_name_convertor` 进行转换
+   * Analyze user intent and target table type
 
-2. **创建工作区**
+2. **Create Workspace**
 
-   * **读取 `mkdir_workspace` Skill**：了解工作区创建脚本的使用方法
-   * 调用 `mkdir_workspace` Skill
+   * **Read `mkdir_workspace` Skill**: Understand workspace creation script usage
+   * Call `mkdir_workspace` Skill
 
-3. **同名文件转换（按需）**
+3. **Read Tables**
 
-   * **触发条件**：当两个目录中的文件名不完全一致时
-   * **读取 `same_name_convertor` Skill**：了解文件名转换脚本的使用方法和匹配策略
-   * 调用 `same_name_convertor` Skill 解析两个目录的文件名
-   * **功能**：
-     - 自动识别语义相同但命名不同的文件
-     - 提取文件名中的数字或关键词进行匹配
-     - 创建同名文件对的副本到输出目录
-   * **输出**：返回转换后的目录路径，供后续比对使用
-   * 如果文件名已经一致，可跳过此步骤
+   * **Read `excel_io` Skill**: Understand Excel file reading method
+   * Call `excel_io.read()` to read Excel files from temp directory as CSV or DataFrame
 
-4. **读取表格**
+4. **Data Profiling**
 
-   * **读取 `excel_io` Skill**：了解 Excel 文件读取方法
-   * 调用 `excel_io.read()` 将工作区 temp 目录内的 Excel 文件读取为 CSV 或 DataFrame
-   * 如果进行了同名文件转换，使用转换后的目录路径
+   * **Read `data_profile` Skill**: Understand data profiling script usage and output format
+   * Call `data_profile` Skill to extract table data characteristics
+   * Get column types, null value counts, unique value counts, and sample data
+   * Adjust subsequent processing logic based on profiling results
 
-5. **数据探查**
+5. **Open WEB Page to Confirm Requirements (Required)**
 
-   * **读取 `data_profile` Skill**：了解数据探查脚本的使用方法和输出格式
-   * 调用 `data_profile` Skill，提取每个表格的数据特征
-   * 了解表格结构、列类型和数据质量
-   * 为比对逻辑提供依据
+   * **Read `excel_preview` Skill**: Understand preview service startup method and operation modes
+   * Call `excel_preview` Skill to start Web service, **must use `confirm` operation mode**
+   * **Purpose**: Let users visually confirm processing requirements on web interface, rather than having Agent guess
+   * Users complete the following operations on web interface:
+     - View data preview and structure information
+     - Select columns to process
+     - Specify processing methods and rules
+     - Fill in special requirements and notes
+   * After Agent gets user-confirmed requirements, continue to next steps
+   * **This step is executed before script generation** to ensure generated scripts fully meet user requirements
 
-6. **打开 WEB 页面确认需求（必须）**
+6. **Generate Customized Scripts**
 
-   * **读取 `excel_preview` Skill**：了解预览服务的启动方法和操作模式
-   * 调用 `excel_preview` Skill 启动 Web 服务，使用 `compare` 操作模式，传入两个目录路径
-   * **目的**：让用户在网页界面可视化地确认比对需求，而非让 Agent 猜测
-   * 系统会自动配对两个目录中**同名的文件**，并展示在左侧文件列表中
-   * 用户在网页界面完成以下操作：
-     - 查看配对文件列表
-     - 点击文件对查看左右数据预览
-     - 点击列头选择需要比对的列（蓝色高亮）
-     - 选择比对规则（精确匹配、模糊匹配等）
-     - 填写备注信息
-   * 用户点击"确认并保存规则"后，配置保存到 `compare_config.json`
-   * **此步骤在生成脚本之前执行**，确保生成的脚本完全符合用户需求
+   * **Read `excel_scriptsGen` Skill**: Understand script generation method and parameter description
+   * Call `excel_scriptsGen` Skill to generate analysis or processing scripts **based on user-confirmed requirements on WEB page**
+   * Add fail-safe logic based on data profiling results (such as handling null values)
+   * Ensure scripts fully comply with processing rules specified by user on web interface
 
-7. **生成分析脚本并执行**
+7. **Execute Analysis/Processing**
 
-   * **读取 `excel_compare` Skill**：了解比对脚本的生成方法和参数说明
-   * Agent 读取 `compare_config.json` 获取用户确认的比对规则
-   * 根据配置生成批量比对脚本，对所有配对的同名文件执行比对
-   * 将比对结果保存到 `excel_output` 目录
+   * Use generated scripts to process CSV/Excel data
 
-8. **保存分析结果**
+8. **Save Processing Results**
 
-   * **读取 `excel_io` Skill**：了解 Excel 文件保存方法
-   * 调用 `excel_io.write()` 保存为 Excel 文件
-   * 结果保存到 `./excel_output` 目录
+   * **Read `excel_io` Skill**: Understand Excel file saving method
+   * Call `excel_io.write()` to save Excel file
+   * Ask user if they want to specify save path:
 
-9. **输出结果 WEB 页面（按需）**
+     * **User specified path**: Save to specified directory
+     * **Not specified**: Save to `./excel_output` and inform user
 
-   * **根据需求决定是否打开结果预览页面**：
-     - 如果用户需要查看比对结果：
-       * **读取 `excel_preview` Skill**：了解结果预览服务的启动方法
-       * 调用 `excel_preview` Skill 启动结果预览服务
-     - 如果是简单的批量处理且用户不需要预览：直接告知结果文件路径即可
-   * 结果预览页面功能：
-     - 展示比对结果和差异明细
-     - 高亮显示差异部分
-     - 提供导出功能
+9. **Output Result WEB Page (as needed)**
 
-10. **生成数据图表（如需要）**
+   * **Decide whether to open result preview page based on requirements**:
+     - If user needs to view processing results:
+       * **Read `excel_preview` Skill**: Understand result preview service startup method
+       * Call `excel_preview` Skill to start result preview service
+     - If simple batch processing and user doesn't need preview: directly inform result file path
+   * Result preview page features:
+     - Show data comparison before and after processing
+     - Highlight modified parts
+     - Provide export function
 
-    * 如果用户需要可视化展示：
-      * **读取 `excel_chart` Skill**：了解图表生成脚本的使用方法
-      * **必须询问用户**：
-        - 需要生成什么类型的图表（柱状图、折线图、饼图、散点图）
-        - 需要展示的数据范围（哪些列、哪些行、筛选条件）
-      * 根据用户选择生成图表
-      * 将图表保存到工作区 `excel_output` 目录
-      * 向用户展示图表并询问反馈
+10. **Generate Data Charts (if needed)**
+
+    * If user needs visual display:
+      * **Read `excel_chart` Skill**: Understand chart generation script usage
+      * **Must ask user**:
+        - What type of chart to generate (bar, line, pie, scatter)
+        - What data range to display (which columns, which rows, filter conditions)
+      * Generate chart based on user selection
+      * Save chart to workspace `excel_output` directory
+      * Show chart to user and ask for feedback
 
 ---
 
-### 3. 注意事项
+### 2. General Requirements (Batch Processing of Large Numbers of Tables, Simple Comparison)
 
-* 所有文件操作均在 **工作区内进行**，避免误操作
-* 中间 CSV 文件仅作临时使用，不覆盖原始 Excel 文件
-* **子目录支持**：当用户提供的路径是目录时，所有 Skill 会自动递归扫描子目录中的 `.xlsx`、`.xls`、`.csv` 文件，并保留子目录结构进行处理
-* 异常处理：
+**Applicable Scenario**: Multi-class, multi-teacher table integration, quick comparison or data processing
 
-  * 文件不存在 → 提示用户并停止操作
-  * 分析脚本生成失败 → 返回错误信息，允许用户调整规则
-* **mkdir_workspace Skill 是前置条件**，必须先执行
-* **参数传递原则**：
-  - 所有脚本参数尽量在运行时通过命令行传入
-  - 使用 `excel_preview summary` 模式获取文件结构，避免读取全部文件内容
-  - 对于大文件，使用 `--max-rows` 参数限制加载行数
-  - 使用 `data_profile` 获取数据特征，而不是让 Agent 读取整个文件
-  - 当输入为目录时，可直接传入目录路径，脚本会自动递归扫描
+**Steps**:
+
+1. **Get User Input**
+
+   * Analyze user intent and batch operation requirements
+   * **Important**: Comparison mode requires **same-name files** (or semantically identical files) in two directories
+   * Agent should inform user to ensure files to be compared have same file names in both directories
+   * If file names are different but semantically identical, need to call `same_name_convertor` for conversion
+
+2. **Create Workspace**
+
+   * **Read `mkdir_workspace` Skill**: Understand workspace creation script usage
+   * Call `mkdir_workspace` Skill
+
+3. **Same-name File Conversion (as needed)**
+
+   * **Trigger condition**: When file names in two directories are not completely consistent
+   * **Read `same_name_convertor` Skill**: Understand file name conversion script usage and matching strategies
+   * Call `same_name_convertor` Skill to parse file names in both directories
+   * **Features**:
+     - Automatically identify files with same meaning but different names
+     - Extract numbers or keywords from file names for matching
+     - Create copies of same-name file pairs to output directory
+   * **Output**: Return converted directory paths for subsequent comparison
+   * If file names are already consistent, skip this step
+
+4. **Read Tables**
+
+   * **Read `excel_io` Skill**: Understand Excel file reading method
+   * Call `excel_io.read()` to read Excel files in workspace temp directory as CSV or DataFrame
+   * If same-name file conversion was performed, use converted directory paths
+
+5. **Data Profiling**
+
+   * **Read `data_profile` Skill**: Understand data profiling script usage and output format
+   * Call `data_profile` Skill to extract data characteristics of each table
+   * Understand table structure, column types, and data quality
+   * Provide basis for comparison logic
+
+6. **Open WEB Page to Confirm Requirements (Required)**
+
+   * **Read `excel_preview` Skill**: Understand preview service startup method and operation modes
+   * Call `excel_preview` Skill to start Web service, use `compare` operation mode, pass two directory paths
+   * **Purpose**: Let users visually confirm comparison requirements on web interface, rather than having Agent guess
+   * System will automatically pair **same-name files** in both directories and display them in left file list
+   * Users complete the following operations on web interface:
+     - View paired file list
+     - Click file pair to view left and right data preview
+     - Click column header to select columns to compare (blue highlight)
+     - Select comparison rules (exact match, fuzzy match, etc.)
+     - Fill in notes
+   * After user clicks "Confirm and Save Rules", configuration is saved to `compare_config.json`
+   * **This step is executed before script generation** to ensure generated scripts fully meet user requirements
+
+7. **Generate Analysis Script and Execute**
+
+   * **Read `excel_compare` Skill**: Understand comparison script generation method and parameter description
+   * Agent reads `compare_config.json` to get user-confirmed comparison rules
+   * Generate batch comparison script based on configuration, execute comparison for all paired same-name files
+   * Save comparison results to `excel_output` directory
+
+8. **Save Analysis Results**
+
+   * **Read `excel_io` Skill**: Understand Excel file saving method
+   * Call `excel_io.write()` to save as Excel file
+   * Results saved to `./excel_output` directory
+
+9. **Output Result WEB Page (as needed)**
+
+   * **Decide whether to open result preview page based on requirements**:
+     - If user needs to view comparison results:
+       * **Read `excel_preview` Skill**: Understand result preview service startup method
+       * Call `excel_preview` Skill to start result preview service
+     - If simple batch processing and user doesn't need preview: directly inform result file path
+   * Result preview page features:
+     - Show comparison results and difference details
+     - Highlight differences
+     - Provide export function
+
+10. **Generate Data Charts (if needed)**
+
+    * If user needs visual display:
+      * **Read `excel_chart` Skill**: Understand chart generation script usage
+      * **Must ask user**:
+        - What type of chart to generate (bar, line, pie, scatter)
+        - What data range to display (which columns, which rows, filter conditions)
+      * Generate chart based on user selection
+      * Save chart to workspace `excel_output` directory
+      * Show chart to user and ask for feedback
 
 ---
 
-## 附录：Skill 依赖关系图
+### 3. Notes
+
+* All file operations are performed **within the workspace** to avoid accidental operations
+* Intermediate CSV files are only for temporary use, not overwriting original Excel files
+* **Subdirectory Support**: When user provides a directory path, all Skills automatically recursively scan `.xlsx`, `.xls`, `.csv` files in subdirectories and preserve subdirectory structure for processing
+* Exception handling:
+
+  * File does not exist → Prompt user and stop operation
+  * Analysis script generation failed → Return error information, allow user to adjust rules
+* **mkdir_workspace Skill is a prerequisite** and must be executed first
+* **Parameter Passing Principles**:
+  - All script parameters should be passed through command line at runtime
+  - Use `excel_preview summary` mode to get file structure, avoid reading all file content
+  - For large files, use `--max-rows` parameter to limit loaded rows
+  - Use `data_profile` to get data characteristics, rather than having Agent read entire file
+  - When input is a directory, can directly pass directory path, script will automatically recursively scan
+
+---
+
+## Appendix: Skill Dependency Diagram
 
 ```
-定制化需求流程：
-mkdir_workspace → excel_io.read → data_profile → excel_preview(confirm) → excel_scriptsGen → 执行脚本 → excel_io.write → [excel_preview(result)] → [excel_chart]
+Customized Requirements Workflow:
+mkdir_workspace → excel_io.read → data_profile → excel_preview(confirm) → excel_scriptsGen → execute script → excel_io.write → [excel_preview(result)] → [excel_chart]
 
-通用化需求流程：
-mkdir_workspace → [same_name_convertor] → excel_io.read → data_profile → excel_preview(compare) → excel_compare → 执行脚本 → excel_io.write → [excel_preview(result)] → [excel_chart]
+General Requirements Workflow:
+mkdir_workspace → [same_name_convertor] → excel_io.read → data_profile → excel_preview(compare) → excel_compare → execute script → excel_io.write → [excel_preview(result)] → [excel_chart]
 
-[] 表示按需调用
-```
+[] indicates optional call

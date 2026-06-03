@@ -1,276 +1,238 @@
 # Excel-Master
 
-**Excel-Master** 是一个面向学校、公司、单位等场合的 AI 助手，支持 Excel 文件的批量处理、定制化分析、表格核对和排版优化。系统通过 AI Agent 调度 Skill，实现自动化处理流程。
+<p align="center">
+  <strong>AI-Powered Excel Processing Assistant</strong>
+</p>
 
-本项目不提供API，请自行部署。国内环境推荐trae cn, qwen code等，如需高度隐私化数据安全，请本地部署ollama服务，调用本地API。
+<p align="center">
+  <a href="./README.md">English</a> | <a href="./README_CN.md">中文</a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.9+-blue.svg" alt="Python 3.9+">
+  <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT">
+  <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg" alt="Platform">
+</p>
 
 ---
 
-## 目录结构
+## Why Excel-Master?
+
+**Tired of manual Excel processing?** Excel-Master is an AI assistant that automates batch processing, data analysis, table comparison, and report generation for Excel files.
+
+### Key Benefits
+
+- **Zero Learning Curve** - Just describe what you need in natural language
+- **Visual Confirmation** - Web interface for reviewing data before processing
+- **Batch Processing** - Handle hundreds of files simultaneously
+- **Smart Comparison** - Automatically match and compare files with different naming
+- **Data Visualization** - Generate charts and reports automatically
+
+---
+
+## Quick Start
+
+### 1. Install Dependencies
+
+```bash
+# Windows
+install_requirements.bat
+
+# macOS/Linux
+pip install -r requirements.txt
+```
+
+### 2. Start Using
+
+Simply tell the AI Agent what you need:
+
+```
+"Compare the fee records in folder A with folder B"
+"Filter students with grades above 80"
+"Merge all class rosters into one file"
+```
+
+The Agent will guide you through the process with a visual web interface.
+
+---
+
+## Use Cases
+
+### For Schools
+- Compare fee collection records across classes
+- Generate student performance reports
+- Merge attendance sheets from multiple teachers
+
+### For Businesses
+- Reconcile financial records
+- Consolidate department reports
+- Analyze sales data trends
+
+### For Any Organization
+- Batch process standardized forms
+- Compare before/after data changes
+- Generate summary statistics
+
+---
+
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| **Batch Processing** | Process hundreds of Excel/CSV files at once |
+| **Smart Comparison** | Compare files with automatic column matching |
+| **Data Profiling** | Analyze data structure and quality |
+| **Visual Preview** | Web interface for reviewing changes |
+| **Chart Generation** | Create bar, line, pie, and scatter charts |
+| **Format Conversion** | Convert .xls to .xlsx automatically |
+| **Name Matching** | Match files with different naming conventions |
+
+---
+
+## How It Works
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  1. Upload Files    →    2. AI Analyzes    →    3. Review   │
+│     (Excel/CSV)         (Data Profiling)       (Web UI)    │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│  4. Confirm Rules   →    5. Process    →    6. Download     │
+│     (Visual Config)       (Automated)       (Results)       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Example Workflow
+
+**Scenario**: Compare fee records between "Standard Charges" and "Actual Payments"
+
+1. **Upload**: Place files in two folders
+2. **Analyze**: AI detects file structures automatically
+3. **Match**: System pairs files with similar names (e.g., "Class1.xlsx" ↔ "2.1.xlsx")
+4. **Configure**: Web interface shows data preview, you select columns to compare
+5. **Execute**: AI generates and runs comparison script
+6. **Results**: Download detailed comparison report with differences highlighted
+
+---
+
+## Project Structure
 
 ```
 Excel-Master/
-├─ skills/
-│  ├─ mkdir_workspace/        # 工作区创建
-│  ├─ excel_io/               # Excel 读写操作
-│  ├─ excel_scriptsGen/       # 定制化脚本生成
-│  ├─ excel_compare/          # 批量比对分析
-│  ├─ same_name_convertor/    # 同名文件转换
-│  ├─ data_profile/           # 数据探查
-│  ├─ excel_compat/           # 格式兼容转换
-│  ├─ excel_chart/            # 图表生成
-│  └─ excel_preview/          # 可视化预览
-├─ workspace/                 # 用户工作区，运行时自动生成
-├─ install_requirements.bat   # 安装依赖
-├─ requirements.txt
-├─ AGENT.md                   # AI Agent 工作流定义
-└─ README.md
+├─ skills/                    # AI Skills
+│  ├─ mkdir_workspace/        # Workspace creation
+│  ├─ excel_io/               # Excel read/write
+│  ├─ excel_scriptsGen/       # Custom script generation
+│  ├─ excel_compare/          # Batch comparison
+│  ├─ same_name_convertor/    # Smart file matching
+│  ├─ data_profile/           # Data analysis
+│  ├─ excel_compat/           # Format conversion
+│  ├─ excel_chart/            # Chart generation
+│  └─ excel_preview/          # Web preview interface
+├─ workspace/                 # Auto-generated workspace
+├─ requirements.txt           # Python dependencies
+├─ AGENT.md                   # AI Agent workflow (English)
+├─ AGENT_CN.md                # AI Agent workflow (Chinese)
+└─ README.md                  # This file
 ```
 
 ---
 
-## 部署指南
+## Deployment
 
-### 1. 安装 Python
+### Prerequisites
+- Python 3.9+
+- pip (Python package manager)
 
-确保系统已安装 Python 3.9+，并加入环境变量。
+### Installation
 
-### 2. 安装依赖
+```bash
+# Clone the repository
+git clone https://github.com/your-username/excel-master.git
+cd excel-master
 
-将 `install_requirements.bat` 与 `requirements.txt` 放在同级目录（项目根目录），双击或通过 CMD 执行：
+# Install dependencies
+pip install -r requirements.txt
 
-```cmd
+# Or use the batch file (Windows)
 install_requirements.bat
 ```
 
-* 使用阿里云 PyPI 镜像加速安装
-* 默认会安装 `pandas`、`openpyxl`、`xlwings` 等 Excel 操作库
+### Configuration
 
-### 3. 初始化工作区
-
-AI Agent 在执行任务前，会调用 `mkdir_workspace` Skill 自动创建以下目录：
-
-```
-./workspace/<user_project_name>/
-├─ temp/                  # 临时 CSV 或中间文件
-├─ generated_scripts/     # 定制化处理脚本
-└─ excel_output/          # 输出 Excel 文件或报告
-```
-
-> `<user_project_name>` 由 Agent 根据用户项目自动生成或指定。
+For AI capabilities, configure one of:
+- **Trae CN** (Recommended for China)
+- **Qwen Code**
+- **Ollama** (Local deployment for privacy)
 
 ---
 
-## 使用指南（以下为SKILL优化内容）
+## Advanced Features
 
-### 1. 提供用户文件
+### Smart File Matching
 
-将待处理 Excel 或 CSV 文件放在任意文件夹中。
-在任务开始时，Agent 会将这些文件 **移动到工作区的 temp 目录**，保证后续操作统一管理。
+When files have different names but same content:
+- "二（1）班.xlsx" ↔ "2.1.xlsx"
+- "Chapter1.xlsx" ↔ "第一章.xlsx"
 
-### 2. 定制化需求
+The system automatically detects and matches them.
 
-适用于少量表格的精细分析，例如文本处理、复杂整合或格式排版。
+### Data Profiling
 
-**操作流程**：
+Before processing, the system analyzes:
+- Column types and names
+- Missing values
+- Data distribution
+- Sample values
 
-1. AI Agent 获取用户意图
-2. 调用 `mkdir_workspace` 创建工作区
-3. 调用 `excel_io.read()` 读取文件
-4. 调用 `data_profile` 进行数据探查
-5. **调用 `excel_preview` 打开 WEB 页面确认需求（必须）**
-   - 用户在网页界面查看数据预览
-   - 选择需要处理的列
-   - 指定处理方式和规则
-   - 填写特殊要求和备注
-6. 根据用户确认的需求，调用 `excel_scriptsGen` 生成定制化处理脚本
-7. 执行脚本，处理数据或调整格式
-8. 调用 `excel_io.write()` 保存结果，默认输出到 `excel_output`，可指定路径
-9. **根据需求决定是否打开结果预览页面**
+### Visual Confirmation
 
-### 3. 通用化需求（比对/批量处理）
-
-适用于大量表格的批量处理、简单核对或比对。
-
-**操作流程**：
-
-1. AI Agent 获取用户意图
-2. 调用 `mkdir_workspace` 创建工作区
-3. **调用 `same_name_convertor` 转换同名文件（按需）**
-   - 当两个目录中的文件名不完全一致时调用
-   - 自动识别语义相同但命名不同的文件
-   - 创建同名文件对的副本
-4. 调用 `excel_io.read()` 读取工作区 temp 目录内的文件
-5. 调用 `data_profile` 进行数据探查
-6. **调用 `excel_preview` 打开 WEB 页面确认需求（必须）**
-   - 用户在网页界面查看所有文件的数据预览
-   - 选择需要比对的列
-   - 指定比对规则（精确匹配、模糊匹配等）
-   - 填写特殊要求和备注
-7. 根据用户确认的需求，调用 `excel_compare` 生成分析脚本并执行比对
-8. 调用 `excel_io.write()` 保存比对结果
-9. **根据需求决定是否打开结果预览页面**
-
-### 4. 数据图表生成
-
-适用于数据可视化展示，帮助用户更直观地理解数据特征和趋势。
-
-**支持图表类型**：
-- **柱状图**：比较不同类别的数值大小（如各班级成绩对比）
-- **折线图**：展示数据随时间或顺序的变化趋势（如成绩变化）
-- **饼图**：展示各部分占整体的比例关系（如成绩等级分布）
-- **散点图**：展示两个变量之间的关系（如数学与物理成绩关系）
-
-**操作流程**：
-
-1. AI Agent 调用 `data_profile` 获取数据特征
-2. **询问用户**需要生成什么类型的图表
-3. **询问用户**需要展示的数据范围（哪些列、哪些行、筛选条件）
-4. 调用 `excel_chart` 生成图表
-5. 图表保存到工作区 `excel_output` 目录
-6. 向用户展示图表并询问反馈
-
-**数据范围示例**：
-- 展示数学和物理成绩：`{"columns": ["数学", "物理"]}`
-- 筛选一班的数据：`{"filter": {"班级": "一班"}}`
-- 展示前10行数据：`{"rows": {"start": 0, "end": 10}}`
-
-### 5. 可视化预览操作
-
-适用于所有表格操作的需求确认和结果预览，提供网页界面让用户可视化地完成操作。
-
-**功能特点**：
-- **需求确认前置**：在生成脚本之前，先通过 WEB 页面让用户确认处理需求
-- **页面操作可视化**：所有操作通过网页界面完成，鼠标点击即可选择
-- **Agent 最小 Token**：Agent 只需启动服务，具体操作由用户在网页完成
-- **交互友好**：直观的界面设计，减少学习成本
-
-**支持操作**：
-- **需求确认**：在数据探查后、生成脚本前，让用户确认处理需求
-- **文件比对**：并排展示两个文件，高亮显示差异
-- **文件合并**：支持纵向追加、横向合并、按关键列合并
-
-**操作流程**：
-
-1. **需求确认阶段（必须）**：
-   - 数据探查完成后，Agent 调用 `excel_preview` 启动 Web 服务
-   - 用户在网页界面查看数据预览和结构信息
-   - 用户选择需要处理的列、指定处理规则、填写备注
-   - Agent 获取用户确认的需求后，生成脚本执行
-
-2. **结果查看**：
-   - 处理完成后，结果文件保存到 `excel_output` 目录
-   - 用户可直接用 Excel 打开查看
+Every operation requires user confirmation through a web interface:
+- Preview data before processing
+- Select specific columns
+- Configure comparison rules
+- Review results
 
 ---
 
-## 实际使用示例
+## FAQ
 
-### 示例1：学生成绩筛选
+**Q: Do I need to know Python?**
+A: No! Just describe what you need in natural language.
 
-**用户需求**：帮我处理【原始资料文件夹路径】的学生成绩，要求得出优秀学生名单（80分以上的）
+**Q: Is my data secure?**
+A: Yes! All processing happens locally. For extra privacy, use Ollama for local AI.
 
-**AI Agent 执行流程**：
+**Q: What file formats are supported?**
+A: Excel (.xlsx, .xls) and CSV files.
 
-1. 获取用户意图：筛选80分以上的学生
-2. 创建工作区：调用 `mkdir_workspace` Skill
-3. 读取文件：调用 `excel_io.read()` 读取工作区 temp 目录内的 Excel 文件
-4. 数据探查：调用 `data_profile` 了解表格结构
-5. 需求确认：调用 `excel_preview confirm` 让用户确认筛选规则
-6. 生成脚本：调用 `excel_scriptsGen` 生成筛选脚本
-7. 执行脚本：筛选80分以上的学生
-8. 保存结果：输出到 `excel_output` 目录
-
-### 示例2：账目比对
-
-**用户需求**：比对【标准收取账目】和【待比对账目】两个目录中的账目差异
-
-**前置要求**：
-- 两个目录中必须存在**同名文件**（或语义相同的文件）
-- 文件结构应相似，包含可比对的列（如姓名、金额等）
-- 如果文件名不同但语义相同（如 `二（1）班.xlsx` 和 `2.1.xlsx`），系统会自动进行同名文件转换
-
-**AI Agent 执行流程**：
-
-1. 获取用户意图：比对两个目录的账目差异
-2. 创建工作区：调用 `mkdir_workspace` Skill
-3. 同名文件转换：调用 `same_name_convertor` 解析文件名，创建同名文件对
-4. 读取文件：调用 `excel_io.read()` 读取转换后的目录文件
-5. 数据探查：调用 `data_profile` 了解每个文件的结构
-6. 需求确认：调用 `excel_preview compare` 让用户选择比对列和规则
-7. 生成脚本：根据用户配置生成比对脚本
-8. 执行比对：批量比对所有同名文件
-9. 保存结果：输出比对结果到 `excel_output` 目录
-
-**比对结果包含**：
-- **比对结果**：所有配对记录的比对详情
-- **仅在标准账目**：在标准账目中存在但待比对账目中缺失的记录
-- **仅在待比对账目**：在待比对账目中存在但标准账目中缺失的记录
-- **汇总**：比对统计数据
+**Q: Can I process hundreds of files?**
+A: Yes! The system is designed for batch processing.
 
 ---
 
-## 常见问题与解决方案
+## Contributing
 
-### 1. 列名不一致导致 KeyError
-
-**问题描述**：比对两个目录中的文件时，出现 `KeyError: '姓名'` 错误。
-
-**原因分析**：
-- 左侧目录文件的列名是自动生成的（如 `Unnamed: 1`）
-- 右侧目录文件的列名是正确的（如 `姓名`）
-- 这通常是因为 Excel 文件第一行是标题行而非表头
-
-**解决方案**：
-1. 使用 `data_profile` 检查两个目录的列名结构
-2. 检查 `sample_values` 字段，判断是否需要跳过第一行
-3. 在比对脚本中分别处理两个目录的文件
-
-### 2. 输出目录不存在
-
-**问题描述**：比对脚本执行时出现 `OSError: Cannot save file into a non-existent directory` 错误。
-
-**解决方案**：
-1. 在执行比对脚本前，确保输出目录存在
-2. 在脚本中添加目录创建逻辑：`os.makedirs(os.path.dirname(output_path), exist_ok=True)`
-
-### 3. 数据类型不一致
-
-**问题描述**：比对数值列时，一个是字符串类型，一个是数值类型，导致比较失败。
-
-**解决方案**：
-1. 在比对前统一数据类型：`df['金额'] = pd.to_numeric(df['金额'], errors='coerce')`
-2. 使用 `errors='coerce'` 参数将无法转换的值设为 NaN
-
-### 4. 空值处理
-
-**问题描述**：比对结果中出现意外的空值或 NaN。
-
-**解决方案**：
-1. 在比对前清理空值：`df = df.dropna(subset=['姓名'])`
-2. 去除空格：`df['姓名'] = df['姓名'].str.strip()`
+Contributions are welcome! Please read our contributing guidelines.
 
 ---
 
-## 注意事项
+## License
 
-* 所有操作均在 **工作区内执行**
-* 临时 CSV 文件仅作中间使用，不覆盖原始文件
-* `mkdir_workspace` Skill 必须先执行，保证工作区完整
-* **比对模式要求两个目录中存在同名文件（或语义相同的文件）**
-* 如果文件名不同但语义相同，可使用 `same_name_convertor` 自动转换
-* 异常处理：
-  * 文件不存在 → 提示并停止
-  * 分析脚本生成失败 → 返回错误信息
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-## 支持功能
+## Support
 
-* 批量处理多班级、多教师表格
-* 高度定制化数据处理与 Excel 排版
-* 数据可视化图表生成（柱状图、折线图、饼图、散点图）
-* 旧版 .xls 文件自动转换为 .xlsx 格式
-* 同名文件自动转换（语义相同但命名不同的文件）
-* 可视化预览操作（文件比对、文件合并）
-* 阿里云 PyPI 镜像加速安装依赖
+- **Issues**: [GitHub Issues](https://github.com/your-username/excel-master/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/your-username/excel-master/discussions)
+
+---
+
+<p align="center">
+  Made with ❤️ for educators, accountants, and data professionals
+</p>
