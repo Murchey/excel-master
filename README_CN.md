@@ -10,7 +10,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.9+-blue.svg" alt="Python 3.9+">
-  <img src="https://img.shields.io/badge/许可证-MIT-green.svg" alt="许可证: MIT">
+  <img src="https://img.shields.io/badge/许可证-GPL%203.0-green.svg" alt="许可证: GPL 3.0">
   <img src="https://img.shields.io/badge/平台-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg" alt="平台">
 </p>
 
@@ -222,7 +222,7 @@ A: 可以！系统专为批量处理设计。
 
 ## 许可证
 
-本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件。
+本项目采用 GPL 3.0 许可证 - 详见 [LICENSE](LICENSE) 文件。
 
 ---
 
