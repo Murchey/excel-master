@@ -15,6 +15,22 @@
 
 ---
 
+## Language Adaptation
+
+**Automatic Language Detection**: If the user initiates a conversation in English, the Agent must **communicate in English throughout the entire interaction**. This includes:
+- All responses and explanations
+- Error messages and status updates
+- Web interface language (automatically switched to English)
+- File names and descriptions in results
+
+**Web Interface Language Switch**: The web preview interface supports Chinese/English switching:
+- **Default Language**: Chinese
+- **Switch Method**: Click the globe icon (🌐) in the top-right corner
+- **Language Persistence**: User's language preference is saved in browser localStorage
+- **Auto-detection**: When Agent detects English user input, it should instruct the web interface to switch to English mode
+
+---
+
 ## Skill List (Quick Reference)
 
 > **Note**: The following is a quick reference only. For detailed usage instructions, please read the corresponding Skill's SKILL.md file when needed.

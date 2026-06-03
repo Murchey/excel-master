@@ -361,6 +361,31 @@ python skills/excel_preview/scripts/preview_server.py confirm "D:\workspace\proj
 - **预览区**：预览合并结果
 - **结果导出**：导出合并后的 Excel 文件
 
+## 语言切换功能
+
+### Web 界面语言支持
+
+Web 预览界面支持中文/英文双语切换：
+
+- **默认语言**：中文
+- **切换方式**：点击页面右上角的地球图标（🌐）
+- **语言持久化**：用户的语言选择会保存在浏览器 localStorage 中，下次访问自动应用
+- **支持范围**：所有界面元素、按钮文本、提示信息、错误消息等
+
+### Agent 语言适配
+
+当 Agent 检测到用户使用英文发起对话时，应：
+
+1. **全程使用英文交互**：所有回复、解释、错误消息都使用英文
+2. **指示 Web 界面切换语言**：在启动 Web 服务时，可以通过 URL 参数或 API 告知界面默认语言
+3. **结果文件描述**：比对结果中的说明文字使用英文
+
+**示例**：
+```
+用户（英文）: "Compare the fee records in folder A with folder B"
+Agent（英文）: "I'll help you compare the fee records. Let me start by creating a workspace..."
+```
+
 ## 注意事项
 
 1. 本技能仅支持 `.xlsx` 和 `.csv` 文件
@@ -368,3 +393,4 @@ python skills/excel_preview/scripts/preview_server.py confirm "D:\workspace\proj
 3. 服务启动后会自动打开浏览器，用户完成操作后关闭浏览器即可
 4. 比对结果和合并结果会自动保存到工作区的 `excel_output` 目录
 5. 如果文件较大，加载可能需要几秒钟时间
+6. **语言切换**：Web 界面支持中英文切换，点击右上角地球图标即可切换

@@ -18,6 +18,42 @@
         }
         .header h1 { font-size: 18px; font-weight: 500; }
         .header .info { font-size: 13px; opacity: 0.9; }
+        .header-right { display: flex; align-items: center; gap: 16px; }
+        
+        .lang-switcher {
+            position: relative;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: background 0.15s;
+        }
+        .lang-switcher:hover { background: rgba(255,255,255,0.2); }
+        .lang-switcher svg { width: 20px; height: 20px; fill: white; }
+        .lang-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: white;
+            border: 1px solid #dadce0;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 1000;
+            min-width: 120px;
+            display: none;
+        }
+        .lang-dropdown.show { display: block; }
+        .lang-option {
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #202124;
+            transition: background 0.15s;
+        }
+        .lang-option:hover { background: #e8f0fe; }
+        .lang-option.active { background: #1a73e8; color: white; }
         
         .main-container { flex: 1; display: flex; overflow: hidden; }
         
@@ -258,36 +294,53 @@
             height: 200px;
             color: #80868b;
         }
+
+        /* English styles */
+        [lang="en"] .header h1 { font-size: 16px; }
+        [lang="en"] .sidebar-header { font-size: 13px; }
+        [lang="en"] .legend { font-size: 12px; }
+        [lang="en"] .context-menu-item { font-size: 13px; }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>Excel 数据对比工具</h1>
-        <div class="info" id="headerInfo">加载中...</div>
+        <h1 id="appTitle">Excel 数据对比工具</h1>
+        <div class="header-right">
+            <div class="info" id="headerInfo">加载中...</div>
+            <div class="lang-switcher" onclick="toggleLangDropdown(event)">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                </svg>
+                <div class="lang-dropdown" id="langDropdown">
+                    <div class="lang-option active" onclick="switchLang('zh')">中文</div>
+                    <div class="lang-option" onclick="switchLang('en')">English</div>
+                </div>
+            </div>
+        </div>
     </div>
     
     <div class="main-container">
         <div class="sidebar">
-            <div class="sidebar-header">同名文件列表 (<span id="pairCount">0</span> 对)</div>
+            <div class="sidebar-header" id="sidebarTitle">同名文件列表 (<span id="pairCount">0</span> 对)</div>
             <div class="file-list" id="fileList"></div>
         </div>
         
         <div class="content-area">
             <div class="legend">
-                <span style="font-weight:500;">列类型：</span>
+                <span style="font-weight:500;" id="legendTitle">列类型：</span>
                 <div class="legend-item">
                     <div class="legend-color primary"></div>
-                    <span>主键（点击列头选择）</span>
+                    <span id="legendPrimary">主键（点击列头选择）</span>
                 </div>
                 <div class="legend-item">
                     <div class="legend-color secondary"></div>
-                    <span>副键</span>
+                    <span id="legendSecondary">副键</span>
                 </div>
                 <div class="legend-item">
                     <div class="legend-color value"></div>
-                    <span>值列</span>
+                    <span id="legendValue">值列</span>
                 </div>
-                <span style="color:#80868b; margin-left:auto;">右键点击列头可选择列类型</span>
+                <span style="color:#80868b; margin-left:auto;" id="legendHint">右键点击列头可选择列类型</span>
             </div>
             
             <div class="tables-container">
@@ -297,7 +350,7 @@
                         <span class="info" id="leftInfo"></span>
                     </div>
                     <div class="table-wrapper" id="leftTable">
-                        <div class="loading">请选择文件</div>
+                        <div class="loading" id="leftPlaceholder">请选择文件</div>
                     </div>
                 </div>
                 <div class="table-panel">
@@ -306,20 +359,20 @@
                         <span class="info" id="rightInfo"></span>
                     </div>
                     <div class="table-wrapper" id="rightTable">
-                        <div class="loading">请选择文件</div>
+                        <div class="loading" id="rightPlaceholder">请选择文件</div>
                     </div>
                 </div>
             </div>
             
             <div class="notes-area">
-                <h4>备注（比对注意事项）</h4>
+                <h4 id="notesTitle">备注（比对注意事项）</h4>
                 <textarea id="compareNotes" placeholder="请填写比对备注（将应用于所有文件对）..."></textarea>
             </div>
             
             <div class="action-bar">
                 <div class="status-info" id="statusInfo">请选择文件，然后右键点击列头设置列类型</div>
                 <div class="toolbar">
-                    <button class="btn-primary" onclick="confirmAndSave()">确认并保存规则</button>
+                    <button class="btn-primary" onclick="confirmAndSave()" id="confirmBtn">确认并保存规则</button>
                 </div>
             </div>
         </div>
@@ -328,24 +381,103 @@
     <div class="context-menu" id="contextMenu">
         <div class="context-menu-item" onclick="setColumnType('primary')">
             <div class="dot primary"></div>
-            <span>设为主键列</span>
+            <span id="menuPrimary">设为主键列</span>
         </div>
         <div class="context-menu-item" onclick="setColumnType('secondary')">
             <div class="dot secondary"></div>
-            <span>设为副键列</span>
+            <span id="menuSecondary">设为副键列</span>
         </div>
         <div class="context-menu-item" onclick="setColumnType('value')">
             <div class="dot value"></div>
-            <span>设为值列</span>
+            <span id="menuValue">设为值列</span>
         </div>
         <div class="context-menu-separator"></div>
         <div class="context-menu-item" onclick="setColumnType('clear')">
             <div class="dot clear"></div>
-            <span>清除选择</span>
+            <span id="menuClear">清除选择</span>
         </div>
     </div>
 
     <script>
+        // Language translations
+        const translations = {
+            zh: {
+                title: 'Excel 数据对比工具',
+                loading: '加载中...',
+                sidebarTitle: '同名文件列表',
+                pairs: '对',
+                legendTitle: '列类型：',
+                legendPrimary: '主键（点击列头选择）',
+                legendSecondary: '副键',
+                legendValue: '值列',
+                legendHint: '右键点击列头可选择列类型',
+                leftFile: '左侧文件',
+                rightFile: '右侧文件',
+                selectFile: '请选择文件',
+                notesTitle: '备注（比对注意事项）',
+                notesPlaceholder: '请填写比对备注（将应用于所有文件对）...',
+                statusHint: '请选择文件，然后右键点击列头设置列类型',
+                confirmBtn: '确认并保存规则',
+                menuPrimary: '设为主键列',
+                menuSecondary: '设为副键列',
+                menuValue: '设为值列',
+                menuClear: '清除选择',
+                primaryKeyTag: ' [主键]',
+                secondaryKeyTag: ' [副键]',
+                valueTag: ' [值]',
+                rows: '行',
+                cols: '列',
+                primaryKeyLabel: '主键',
+                secondaryKeyLabel: '副键',
+                leftValueLabel: '左侧值列',
+                rightValueLabel: '右侧值列',
+                noSelection: '请右键点击列头设置列类型',
+                errorPrimaryKey: '请先设置主键列（右键点击列头）',
+                errorValueColumn: '请至少设置一个值列（右键点击列头）',
+                successMessage: '规则已保存',
+                closeConfirm: '规则已保存，是否关闭预览服务？',
+                ruleSaved: '规则已保存：{count} 对文件将使用配置进行比对'
+            },
+            en: {
+                title: 'Excel Data Comparison Tool',
+                loading: 'Loading...',
+                sidebarTitle: 'Same-name File List',
+                pairs: 'pairs',
+                legendTitle: 'Column Type:',
+                legendPrimary: 'Primary Key (Click header to select)',
+                legendSecondary: 'Secondary Key',
+                legendValue: 'Value Column',
+                legendHint: 'Right-click column header to select type',
+                leftFile: 'Left File',
+                rightFile: 'Right File',
+                selectFile: 'Please select a file',
+                notesTitle: 'Notes (Comparison Notes)',
+                notesPlaceholder: 'Please enter comparison notes (applied to all file pairs)...',
+                statusHint: 'Please select a file, then right-click column header to set type',
+                confirmBtn: 'Confirm and Save Rules',
+                menuPrimary: 'Set as Primary Key',
+                menuSecondary: 'Set as Secondary Key',
+                menuValue: 'Set as Value Column',
+                menuClear: 'Clear Selection',
+                primaryKeyTag: ' [PK]',
+                secondaryKeyTag: ' [SK]',
+                valueTag: ' [Val]',
+                rows: 'rows',
+                cols: 'cols',
+                primaryKeyLabel: 'Primary',
+                secondaryKeyLabel: 'Secondary',
+                leftValueLabel: 'Left Value',
+                rightValueLabel: 'Right Value',
+                noSelection: 'Right-click column header to set type',
+                errorPrimaryKey: 'Please set a primary key column first (right-click header)',
+                errorValueColumn: 'Please set at least one value column (right-click header)',
+                successMessage: 'Rules saved successfully',
+                closeConfirm: 'Rules saved. Close preview service?',
+                ruleSaved: 'Rules saved: {count} file pairs will use this configuration'
+            }
+        };
+
+        let currentLang = 'zh';
         let appData = null;
         let currentPair = null;
         let leftColumns = [];
@@ -359,12 +491,75 @@
         
         let contextMenuTarget = null;
 
+        function t(key) {
+            return translations[currentLang][key] || key;
+        }
+
+        function switchLang(lang) {
+            currentLang = lang;
+            localStorage.setItem('excel_compare_lang', lang);
+            document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+            
+            // Update active state
+            document.querySelectorAll('.lang-option').forEach(el => {
+                el.classList.toggle('active', el.textContent === (lang === 'zh' ? '中文' : 'English'));
+            });
+            
+            // Update all UI text
+            updateUIText();
+            
+            // Close dropdown
+            document.getElementById('langDropdown').classList.remove('show');
+        }
+
+        function toggleLangDropdown(event) {
+            event.stopPropagation();
+            document.getElementById('langDropdown').classList.toggle('show');
+        }
+
+        function updateUIText() {
+            document.getElementById('appTitle').textContent = t('title');
+            document.getElementById('headerInfo').textContent = appData ? 
+                `Left: ${appData.left_dir} | Right: ${appData.right_dir}` : t('loading');
+            document.getElementById('sidebarTitle').innerHTML = 
+                `${t('sidebarTitle')} (<span id="pairCount">${appData ? appData.paired_files.length : 0}</span> ${t('pairs')})`;
+            document.getElementById('legendTitle').textContent = t('legendTitle');
+            document.getElementById('legendPrimary').textContent = t('legendPrimary');
+            document.getElementById('legendSecondary').textContent = t('legendSecondary');
+            document.getElementById('legendValue').textContent = t('legendValue');
+            document.getElementById('legendHint').textContent = t('legendHint');
+            document.getElementById('leftTitle').textContent = t('leftFile');
+            document.getElementById('rightTitle').textContent = t('rightFile');
+            document.getElementById('leftPlaceholder').textContent = t('selectFile');
+            document.getElementById('rightPlaceholder').textContent = t('selectFile');
+            document.getElementById('notesTitle').textContent = t('notesTitle');
+            document.getElementById('compareNotes').placeholder = t('notesPlaceholder');
+            document.getElementById('statusInfo').textContent = t('statusHint');
+            document.getElementById('confirmBtn').textContent = t('confirmBtn');
+            document.getElementById('menuPrimary').textContent = t('menuPrimary');
+            document.getElementById('menuSecondary').textContent = t('menuSecondary');
+            document.getElementById('menuValue').textContent = t('menuValue');
+            document.getElementById('menuClear').textContent = t('menuClear');
+            
+            // Update CSS pseudo-elements
+            document.querySelectorAll('th.primary-key').forEach(el => {
+                el.style.setProperty('--tag', `"${t('primaryKeyTag')}"`);
+            });
+        }
+
+        function initLang() {
+            const savedLang = localStorage.getItem('excel_compare_lang') || 'zh';
+            switchLang(savedLang);
+        }
+
         async function init() {
+            initLang();
+            
             const resp = await fetch('/api/init');
             appData = await resp.json();
             
             document.getElementById('headerInfo').textContent = 
-                `左侧: ${appData.left_dir} | 右侧: ${appData.right_dir}`;
+                `Left: ${appData.left_dir} | Right: ${appData.right_dir}`;
             document.getElementById('pairCount').textContent = appData.paired_files.length;
             
             renderFileList();
@@ -375,6 +570,7 @@
             
             document.addEventListener('click', () => {
                 document.getElementById('contextMenu').classList.remove('show');
+                document.getElementById('langDropdown').classList.remove('show');
             });
         }
 
@@ -407,9 +603,9 @@
             commonColumns = result.common_columns;
             
             document.getElementById('leftTitle').textContent = result.left.name;
-            document.getElementById('leftInfo').textContent = `${result.left.rows}行 × ${result.left.columns.length}列`;
+            document.getElementById('leftInfo').textContent = `${result.left.rows} ${t('rows')} × ${result.left.columns.length} ${t('cols')}`;
             document.getElementById('rightTitle').textContent = result.right.name;
-            document.getElementById('rightInfo').textContent = `${result.right.rows}行 × ${result.right.columns.length}列`;
+            document.getElementById('rightInfo').textContent = `${result.right.rows} ${t('rows')} × ${result.right.columns.length} ${t('cols')}`;
             
             renderTable('leftTable', result.left.data, result.left.columns, 'left');
             renderTable('rightTable', result.right.data, result.right.columns, 'right');
@@ -535,12 +731,12 @@
         function updateStatusInfo() {
             const info = document.getElementById('statusInfo');
             const parts = [];
-            if (primaryKey) parts.push(`主键: ${primaryKey}`);
-            if (secondaryKeys.size > 0) parts.push(`副键: ${Array.from(secondaryKeys).join(', ')}`);
-            if (leftValueColumns.size > 0) parts.push(`左侧值列: ${Array.from(leftValueColumns).join(', ')}`);
-            if (rightValueColumns.size > 0) parts.push(`右侧值列: ${Array.from(rightValueColumns).join(', ')}`);
+            if (primaryKey) parts.push(`${t('primaryKeyLabel')}: ${primaryKey}`);
+            if (secondaryKeys.size > 0) parts.push(`${t('secondaryKeyLabel')}: ${Array.from(secondaryKeys).join(', ')}`);
+            if (leftValueColumns.size > 0) parts.push(`${t('leftValueLabel')}: ${Array.from(leftValueColumns).join(', ')}`);
+            if (rightValueColumns.size > 0) parts.push(`${t('rightValueLabel')}: ${Array.from(rightValueColumns).join(', ')}`);
             
-            info.textContent = parts.length > 0 ? parts.join(' | ') : '请右键点击列头设置列类型';
+            info.textContent = parts.length > 0 ? parts.join(' | ') : t('noSelection');
         }
 
         function showToast(message, type = 'info') {
@@ -553,11 +749,11 @@
 
         async function confirmAndSave() {
             if (!primaryKey) {
-                showToast('请先设置主键列（右键点击列头）', 'error');
+                showToast(t('errorPrimaryKey'), 'error');
                 return;
             }
             if (leftValueColumns.size === 0 && rightValueColumns.size === 0) {
-                showToast('请至少设置一个值列（右键点击列头）', 'error');
+                showToast(t('errorValueColumn'), 'error');
                 return;
             }
             
@@ -579,11 +775,12 @@
             
             const result = await resp.json();
             if (result.status === 'success') {
-                showToast(result.message, 'success');
-                document.getElementById('statusInfo').textContent = `规则已保存：${result.paired_count} 对文件将使用配置进行比对`;
+                showToast(t('successMessage'), 'success');
+                document.getElementById('statusInfo').textContent = 
+                    t('ruleSaved').replace('{count}', result.paired_count);
                 
                 setTimeout(() => {
-                    if (confirm('规则已保存，是否关闭预览服务？')) {
+                    if (confirm(t('closeConfirm'))) {
                         fetch('/api/shutdown', {method: 'POST'}).then(() => window.close());
                     }
                 }, 1000);
